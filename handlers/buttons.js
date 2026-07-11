@@ -10,12 +10,28 @@ const db = require("../utils/database");
 const settings = require("../utils/settings");
 
 module.exports = async (interaction) => {
+
+    // ===========================================
+    // Confession Wizard
+    // ===========================================
+
     if (
-    interaction.customId === "wizard_save" ||
-    interaction.customId === "wizard_cancel"
-) {
-    return require("./wizardButtons")(interaction);
-}
+        interaction.customId === "wizard_save" ||
+        interaction.customId === "wizard_cancel"
+    ) {
+        return require("./wizardButtons")(interaction);
+    }
+
+    // ===========================================
+    // Blacklist Wizard
+    // ===========================================
+
+    if (
+        interaction.customId === "wizard_blist_save" ||
+        interaction.customId === "wizard_blist_cancel"
+    ) {
+        return require("./blistWizardButtons")(interaction);
+    }
 
     // ===========================================
     // Add Confession
@@ -120,20 +136,20 @@ module.exports = async (interaction) => {
 
             const guild = settings.getGuild(interaction.guild.id);
 
-if (!guild.modAlertChannel) {
+            if (!guild.modAlertChannel) {
 
-    return interaction.reply({
-        content: "❌ This server hasn't been configured yet. Run **/confession wizard**.",
-        ephemeral: true
-    });
+                return interaction.reply({
+                    content: "❌ This server hasn't been configured yet. Run **/confession wizard**.",
+                    ephemeral: true
+                });
 
-}
+            }
 
-const modChannel = await interaction.client.channels.fetch(
-    guild.modAlertChannel
-);
+            const modChannel = await interaction.client.channels.fetch(
+                guild.modAlertChannel
+            );
 
-if (modChannel) {
+            if (modChannel) {
 
                 const embed = new EmbedBuilder()
                     .setColor(0xE3A262)
@@ -160,7 +176,7 @@ if (modChannel) {
                             inline: true
                         },
                         {
-                            name: "🆔lolll id author id",
+                            name: "🆔 Reporter ID",
                             value: interaction.user.id,
                             inline: true
                         },
@@ -185,8 +201,8 @@ if (modChannel) {
 
                 await modChannel.send({
                     content: guild.modRoles
-    .map(role => `<@&${role}>`)
-    .join(" "),
+                        .map(role => `<@&${role}>`)
+                        .join(" "),
                     embeds: [embed]
                 });
 
