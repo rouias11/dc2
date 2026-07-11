@@ -1,5 +1,6 @@
 const {
-    SlashCommandBuilder
+    SlashCommandBuilder,
+    PermissionFlagsBits
 } = require("discord.js");
 
 const settings = require("../utils/settings");
@@ -51,10 +52,10 @@ module.exports = {
                 .addStringOption(opt =>
                     opt
                         .setName("ids")
-                        .setDescription("IDs separated by spaces")
+                        .setDescription("User IDs separated by spaces")
                         .setRequired(true)
                 )
-        )
+        ),
 
     async execute(interaction) {
 
@@ -66,17 +67,25 @@ module.exports = {
 
         if (sub === "wizard") {
 
-    if (!interaction.member.permissions.has("Administrator")) {
-        return interaction.reply({
-            content: "❌ Only administrators can use this command.",
-            ephemeral: true
-        });
-    }
+            if (
+                !interaction.member.permissions.has(
+                    PermissionFlagsBits.Administrator
+                )
+            ) {
+                return interaction.reply({
+                    content: "❌ Only administrators can use this command.",
+                    ephemeral: true
+                });
+            }
 
-    const wizard = require("../handlers/blistWizard");
-    return wizard(interaction);
+            const wizard = require("../handlers/blistWizard");
+            return wizard(interaction);
 
-}
+        }
+
+        // ==========================
+        // Load Guild Settings
+        // ==========================
 
         const guild = settings.getGuild(interaction.guild.id);
 
@@ -90,21 +99,33 @@ module.exports = {
 
         }
 
-        const hasRole =
-            interaction.member.roles.cache.some(role =>
-                guild.blistRoles.includes(role.id)
-            );
-
-        if (!hasRole) {
+        if (
+            !guild.blistRoles ||
+            guild.blistRoles.length === 0
+        ) {
 
             return interaction.reply({
                 content:
-                    "❌ You don't have permission to use this command.",
+                    "❌ No blacklist staff roles have been configured.\nRun **/blist wizard** first.",
                 ephemeral: true
             });
 
         }
-              // ==========================
+
+        const hasRole = interaction.member.roles.cache.some(role =>
+            guild.blistRoles.includes(role.id)
+        );
+
+        if (!hasRole) {
+
+            return interaction.reply({
+                content: "❌ You don't have permission to use this command.",
+                ephemeral: true
+            });
+
+        }
+
+        // ==========================
         // /blist post
         // ==========================
 
@@ -119,10 +140,12 @@ module.exports = {
             );
 
             if (!channel) {
+
                 return interaction.reply({
-                    content: "❌ The configured blacklist channel no longer exists.",
+                    content: "❌ Blacklist channel not found.",
                     ephemeral: true
                 });
+
             }
 
             let message = "";
