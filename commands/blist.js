@@ -1,84 +1,137 @@
 const {
-  SlashCommandBuilder
-} = require('discord.js');
+    SlashCommandBuilder
+} = require("discord.js");
 
-const allowedRoles = [
-  '1510271113651818717',
-  '1510273045691109417',
-  '1510273298850910348',
-  '1510273221172396032'
-];
-
-const blistChannelId = '1522479837703307364';
+const settings = require("../utils/settings");
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('blist')
-    .setDescription('Blacklist system')
 
-    // POST
-    .addSubcommand(sub =>
-      sub.setName('post')
-        .setDescription('Post a blist')
-        .addStringOption(opt =>
-          opt.setName('link')
-            .setDescription('Google Docs link')
-            .setRequired(true))
-        .addStringOption(opt =>
-          opt.setName('vanity')
-            .setDescription('discord.gg link')
-            .setRequired(true))
-        .addBooleanOption(opt =>
-          opt.setName('ping')
-            .setDescription('Ping everyone?')
-            .setRequired(false)
+    data: new SlashCommandBuilder()
+        .setName("blist")
+        .setDescription("Blacklist system")
+
+        .addSubcommand(sub =>
+            sub
+                .setName("wizard")
+                .setDescription("Configure the blacklist system")
         )
-    )
 
-    // BAN
-    .addSubcommand(sub =>
-      sub.setName('ban')
-        .setDescription('Ban multiple user IDs')
-        .addStringOption(opt =>
-          opt.setName('ids')
-            .setDescription('User IDs separated by space')
-            .setRequired(true)
+        .addSubcommand(sub =>
+            sub
+                .setName("post")
+                .setDescription("Post a blacklist")
+
+                .addStringOption(opt =>
+                    opt
+                        .setName("link")
+                        .setDescription("Google Docs link")
+                        .setRequired(true)
+                )
+
+                .addStringOption(opt =>
+                    opt
+                        .setName("vanity")
+                        .setDescription("Discord invite")
+                        .setRequired(true)
+                )
+
+                .addBooleanOption(opt =>
+                    opt
+                        .setName("ping")
+                        .setDescription("Ping everyone?")
+                        .setRequired(false)
+                )
         )
-    ),
 
-  async execute(interaction, client) {
+        .addSubcommand(sub =>
+            sub
+                .setName("ban")
+                .setDescription("Ban multiple users")
 
-    // ROLE CHECK
-    const hasRole = interaction.member.roles.cache.some(role =>
-      allowedRoles.includes(role.id)
-    );
+                .addStringOption(opt =>
+                    opt
+                        .setName("ids")
+                        .setDescription("IDs separated by spaces")
+                        .setRequired(true)
+                )
+        )
 
-    if (!hasRole) {
-      return interaction.reply({
-        content: ' u do not have permission to use this command.',
-        ephemeral: true
-      });
+    async execute(interaction) {
+
+        const sub = interaction.options.getSubcommand();
+
+        // ==========================
+        // Wizard
+        // ==========================
+
+        if (sub === "wizard") {
+
+    if (!interaction.member.permissions.has("Administrator")) {
+        return interaction.reply({
+            content: "❌ Only administrators can use this command.",
+            ephemeral: true
+        });
     }
 
-    const sub = interaction.options.getSubcommand();
+    const wizard = require("../handlers/blistWizard");
+    return wizard(interaction);
 
-    // -------------------
-    // /blist post
-    // -------------------
-    if (sub === 'post') {
-      const link = interaction.options.getString('link');
-      const vanity = interaction.options.getString('vanity');
-      const ping = interaction.options.getBoolean('ping') || false;
+}
 
-      const channel = await client.channels.fetch(blistChannelId);
+        const guild = settings.getGuild(interaction.guild.id);
 
-      let message = '';
+        if (!guild.blistChannel) {
 
-      if (ping) {
-        message += '@everyone\n\n';
-      }
+            return interaction.reply({
+                content:
+                    "❌ This server hasn't been configured yet.\nRun **/blist wizard** first.",
+                ephemeral: true
+            });
 
-      message +=
+        }
+
+        const hasRole =
+            interaction.member.roles.cache.some(role =>
+                guild.blistRoles.includes(role.id)
+            );
+
+        if (!hasRole) {
+
+            return interaction.reply({
+                content:
+                    "❌ You don't have permission to use this command.",
+                ephemeral: true
+            });
+
+        }
+              // ==========================
+        // /blist post
+        // ==========================
+
+        if (sub === "post") {
+
+            const link = interaction.options.getString("link");
+            const vanity = interaction.options.getString("vanity");
+            const ping = interaction.options.getBoolean("ping") || false;
+
+            const channel = await interaction.client.channels.fetch(
+                guild.blistChannel
+            );
+
+            if (!channel) {
+                return interaction.reply({
+                    content: "❌ The configured blacklist channel no longer exists.",
+                    ephemeral: true
+                });
+            }
+
+            let message = "";
+
+            if (ping) {
+                message += "@everyone\n\n";
+            }
+
+            message +=
 `woohooo new blist ig on /${vanity}
 
 blist doc: ${link}
@@ -88,36 +141,57 @@ Serv link: ${vanity}
 
 sent by ${interaction.user}`;
 
-      await channel.send({ content: message });
+            await channel.send({
+                content: message
+            });
 
-      return interaction.reply({
-        content: 'blist posted successfully thanks ig.',
-        ephemeral: true
-      });
-    }
+            return interaction.reply({
+                content: "✅ Blacklist posted successfully.",
+                ephemeral: true
+            });
 
-    // -------------------
-    // /blist ban
-    // -------------------
-    if (sub === 'ban') {
-      const ids = interaction.options.getString('ids').split(' ');
-
-      let results = [];
-
-      for (const id of ids) {
-        try {
-          const member = await interaction.guild.members.fetch(id);
-          await member.ban({ reason: 'Banned via blist command' });
-          results.push(`✅ Banned: ${id}`);
-        } catch {
-          results.push(`❌ Failed: ${id}`);
         }
-      }
 
-      return interaction.reply({
-        content: results.join('\n'),
-        ephemeral: true
-      });
+        // ==========================
+        // /blist ban
+        // ==========================
+
+        if (sub === "ban") {
+
+            const ids = interaction.options
+                .getString("ids")
+                .trim()
+                .split(/\s+/);
+
+            const results = [];
+
+            for (const id of ids) {
+
+                try {
+
+                    const member = await interaction.guild.members.fetch(id);
+
+                    await member.ban({
+                        reason: `Banned by ${interaction.user.tag} via /blist ban`
+                    });
+
+                    results.push(`✅ Banned: ${id}`);
+
+                } catch {
+
+                    results.push(`❌ Failed: ${id}`);
+
+                }
+
+            }
+
+            return interaction.reply({
+                content: results.join("\n"),
+                ephemeral: true
+            });
+
+        }
+
     }
-  }
+
 };
