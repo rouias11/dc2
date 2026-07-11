@@ -53,4 +53,34 @@ module.exports = async (interaction) => {
 
     }
 
+    // ==========================
+    // Blacklist Channel
+    // ==========================
+
+    if (interaction.customId === "wizard_blist_channel") {
+
+        session.blistChannel = interaction.values[0];
+
+        return interaction.reply({
+            content: "✅ Blacklist channel selected.",
+            ephemeral: true
+        });
+
+    }
+
+    // ==========================
+    // Blacklist Roles
+    // ==========================
+
+    if (interaction.customId === "wizard_blist_roles") {
+
+        session.blistRoles = interaction.values;
+
+        return interaction.reply({
+            content: `✅ ${interaction.values.length} blacklist role(s) selected.`,
+            ephemeral: true
+        });
+
+    }
+
 };
