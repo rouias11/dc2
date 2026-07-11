@@ -9,7 +9,10 @@ function create(guildId) {
     sessions.set(guildId, {
         confessionChannel: null,
         modAlertChannel: null,
-        modRoles: []
+        modRoles: [],
+
+        blistChannel: null,
+        blistRoles: []
     });
 
     return sessions.get(guildId);
