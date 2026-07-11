@@ -28,7 +28,8 @@ function getGuild(guildId) {
             confessionChannel: null,
             modAlertChannel: null,
             modRoles: [],
-            blistChannel: null
+            blistChannel: null,
+            blistRoles: []
         };
 
         save(data);
